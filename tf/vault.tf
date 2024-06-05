@@ -35,20 +35,6 @@ resource "aws_security_group" "vault" {
   }
 }
 
-resource "aws_instance" "vault" {
-  instance_type               = "t3.small"
-  associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.vault.id]
-
-  ami                  = data.aws_ami.al2023.id
-  iam_instance_profile = aws_iam_instance_profile.vault.name
-  user_data            = file("./config/vault-server.yml")
-
-  tags = {
-    Name = "demo-vault-${var.name}"
-  }
-}
-
 resource "aws_iam_role" "vault" {
   name = "demo-vault-${var.name}"
 
@@ -74,4 +60,28 @@ resource "aws_iam_instance_profile" "vault" {
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.vault.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_instance" "vault" {
+  instance_type               = "t3.small"
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.vault.id]
+
+  ami                  = data.aws_ami.al2023.id
+  iam_instance_profile = aws_iam_instance_profile.vault.name
+
+  tags = {
+    Name = "demo-vault-${var.name}"
+  }
+
+  user_data = <<-EOT
+    #cloud-config
+    runcmd:
+      - yum install -y yum-utils
+      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+      - yum -y install vault
+      - sed -i 's|^ExecStart.*$|ExecStart=/usr/bin/vault server -dev -dev-root-token-id=root -dev-listen-address=0.0.0.0:8200 -dev-no-store-token|' /lib/systemd/system/vault.service
+      - systemctl daemon-reload
+      - systemctl enable vault --now
+  EOT
 }
