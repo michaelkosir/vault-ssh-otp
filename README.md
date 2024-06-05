@@ -7,6 +7,12 @@ The One-Time SSH Password (OTP) SSH secrets engine type allows a Vault server to
 - https://developer.hashicorp.com/vault/docs/secrets/ssh/one-time-ssh-passwords
 
 
+### Diagram
+<p align="center">
+  <img src="./img/vault-ssh-otp.png">
+</p>
+
+
 ### Infrastructure Setup
 ```shell
 git clone ...
