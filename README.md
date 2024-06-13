@@ -16,7 +16,8 @@ The One-Time SSH Password (OTP) SSH secrets engine type allows a Vault server to
 ### Infrastructure Setup
 ```shell
 git clone ...
-cd ./vault-ssh-otp/tf
+cd ./vault-ssh-otp-demo/tf
+terraform init
 terraform apply
 ```
 
