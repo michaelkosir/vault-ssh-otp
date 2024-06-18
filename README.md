@@ -19,13 +19,12 @@ git clone ...
 cd ./vault-ssh-otp-demo/tf
 terraform init
 terraform apply
+export VAULT_ADDR=$(terraform output -raw vault_addr)
+export VAULT_TOKEN=$(terraform output -raw vault_token)
 ```
 
 ### Vault Setup
 ```shell
-export VAULT_ADDR=$(terraform output -raw vault_addr)
-export VAULT_TOKEN=$(terraform output -raw vault_token)
-
 vault status
 
 vault secrets list
@@ -50,5 +49,5 @@ exit
 ssh ubuntu@$REMOTE
 
 # All in one command
-vault ssh -role security -mode otp ubuntu@$REMOTE
+vault ssh -role=security -mode=otp ubuntu@$REMOTE
 ```
