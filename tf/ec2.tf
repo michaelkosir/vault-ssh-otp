@@ -85,9 +85,39 @@ resource "aws_instance" "demo" {
           vault_addr = "http://${aws_instance.vault.public_ip}:8200"
           ssh_mount_point = "ssh"
           namespace = "/"
-          allowed_roles = "security"
-          allowed_cidr_list = "0.0.0.0/0" # demo purposes
-
+          allowed_roles = "demo"
+          allowed_cidr_list = "0.0.0.0/0"
+      
+      - path: /etc/ssh/sshd_config
+        content: |
+          Include /etc/ssh/sshd_config.d/*.conf
+          PasswordAuthentication no
+          KbdInteractiveAuthentication yes
+          UsePAM yes
+          X11Forwarding yes
+          PrintMotd no
+          AcceptEnv LANG LC_*
+          Subsystem       sftp    /usr/lib/openssh/sftp-server
+      
+      - path: /etc/pam.d/sshd
+        content: |
+          auth requisite pam_exec.so quiet expose_authtok log=/tmp/vaultssh.log /usr/local/bin/vault-ssh-helper -dev -config=/etc/vault-ssh-helper.d/config.hcl
+          auth optional pam_unix.so not_set_pass use_first_pass nodelay
+          account    required     pam_nologin.so
+          @include common-account
+          session [success=ok ignore=ignore module_unknown=ignore default=bad]        pam_selinux.so close
+          session    required     pam_loginuid.so
+          session    optional     pam_keyinit.so force revoke
+          @include common-session
+          session    optional     pam_motd.so  motd=/run/motd.dynamic
+          session    optional     pam_motd.so noupdate
+          session    optional     pam_mail.so standard noenv # [1]
+          session    required     pam_limits.so
+          session    required     pam_env.so # [1]
+          session    required     pam_env.so user_readenv=1 envfile=/etc/default/locale
+          session [success=ok ignore=ignore module_unknown=ignore default=bad]        pam_selinux.so open
+          @include common-password
+    
     runcmd:
       # install vault-ssh-helper
       - wget https://releases.hashicorp.com/vault-ssh-helper/0.2.1/vault-ssh-helper_0.2.1_linux_amd64.zip
@@ -95,19 +125,6 @@ resource "aws_instance" "demo" {
       - chmod 0755 /usr/local/bin/vault-ssh-helper
       - chown root:root /usr/local/bin/vault-ssh-helper
       - rm vault-ssh-helper_0.2.1_linux_amd64.zip
-
-      # backup
-      - cp /etc/pam.d/sshd /etc/pam.d/sshd.bk
-      - cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bk
-
-      # /etc/pam.d/sshd (these steps can vary depending on OS)
-      - sed -i '/@include common-auth/a auth optional pam_unix.so not_set_pass use_first_pass nodelay' /etc/pam.d/sshd
-      - sed -i '/@include common-auth/a auth requisite pam_exec.so quiet expose_authtok log=/tmp/vaultssh.log /usr/local/bin/vault-ssh-helper -dev -config=/etc/vault-ssh-helper.d/config.hcl' /etc/pam.d/sshd
-      - sed -i 's/^@include common-auth/#&/' /etc/pam.d/sshd
-
-      # /etc/ssh/sshd_config (these steps can vary depending on OS)
-      - sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-      - sed -i 's/^KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/' /etc/ssh/sshd_config
 
       # restart sshd
       - systemctl restart sshd

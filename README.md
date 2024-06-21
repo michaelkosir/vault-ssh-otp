@@ -21,6 +21,7 @@ terraform init
 terraform apply
 export VAULT_ADDR=$(terraform output -raw vault_addr)
 export VAULT_TOKEN=$(terraform output -raw vault_token)
+export REMOTE=$(terraform output -raw demo_ip)
 ```
 
 ### Vault Setup
@@ -31,7 +32,7 @@ vault secrets list
 
 vault secrets enable ssh
 
-vault write ssh/roles/security \
+vault write ssh/roles/demo \
   key_type=otp \
   default_user=ubuntu \
   cidr_list=0.0.0.0/0
@@ -39,9 +40,7 @@ vault write ssh/roles/security \
 
 ### Vault Usage
 ```shell 
-export REMOTE=$(terraform output -raw demo_ip)
-
-vault write ssh/creds/security ip=$REMOTE
+vault write ssh/creds/demo ip=$REMOTE
 
 ssh ubuntu@$REMOTE
 exit
@@ -49,5 +48,5 @@ exit
 ssh ubuntu@$REMOTE
 
 # All in one command
-vault ssh -role=security -mode=otp ubuntu@$REMOTE
+vault ssh -role=demo -mode=otp ubuntu@$REMOTE
 ```
